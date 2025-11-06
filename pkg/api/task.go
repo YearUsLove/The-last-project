@@ -26,28 +26,25 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func handleGetTask(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
 	if id == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "Не указан идентификатор"})
+		writeJSON(w, map[string]string{"error": "id is required"})
 		return
 	}
 
 	task, err := db.GetTask(id)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		writeJSON(w, map[string]string{"error": "Задача не найдена"})
+		writeJSON(w, map[string]string{"error": err.Error()})
 		return
 	}
 
 	writeJSON(w, task)
 }
 
-
 func handleEditTask(w http.ResponseWriter, r *http.Request) {
-	
 	var incoming map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&incoming); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -60,10 +57,12 @@ func handleEditTask(w http.ResponseWriter, r *http.Request) {
 		task.ID = fmt.Sprint(v)
 	}
 	if strings.TrimSpace(task.ID) == "" {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, map[string]string{"error": "id is required"})
 		return
 	}
 	if _, err := strconv.Atoi(task.ID); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, map[string]string{"error": "invalid id"})
 		return
 	}
@@ -74,30 +73,30 @@ func handleEditTask(w http.ResponseWriter, r *http.Request) {
 		task.Title = fmt.Sprint(v)
 	}
 	if strings.TrimSpace(task.Title) == "" {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, map[string]string{"error": "task title is required"})
 		return
 	}
 	if v, ok := incoming["comment"]; ok {
 		task.Comment = fmt.Sprint(v)
-	} else {
-		task.Comment = ""
 	}
 	if v, ok := incoming["repeat"]; ok {
 		task.Repeat = fmt.Sprint(v)
-	} else {
-		task.Repeat = ""
 	}
 	if task.Repeat != "" {
 		if err := validateRepeatFormat(task.Repeat); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			writeJSON(w, map[string]string{"error": "invalid repeat format"})
 			return
 		}
 	}
 	if err := processTaskDates(&task); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, map[string]string{"error": err.Error(), "flag": "1"})
 		return
 	}
 	if err := db.UpdateTask(&task); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, map[string]string{"error": err.Error()})
 		return
 	}

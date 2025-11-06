@@ -25,9 +25,10 @@ func AddTask(task *Task) (int64, error) {
 }
 
 func Tasks(limit int, search string) ([]*Task, error) {
-	var rows *sql.Rows
-	var err error
-
+	var (
+		rows *sql.Rows
+		err  error
+	)
 	search = strings.TrimSpace(search)
 
 	if search == "" {
@@ -39,7 +40,6 @@ func Tasks(limit int, search string) ([]*Task, error) {
 	}
 
 	if err == nil && search != "" {
-		// Проверяем, является ли поиск датой
 		if parsedDate, parseErr := time.Parse("02.01.2006", search); parseErr == nil {
 			dateStr := parsedDate.Format("20060102")
 			rows, err = DB.Query(`
@@ -48,7 +48,10 @@ func Tasks(limit int, search string) ([]*Task, error) {
 				WHERE date = ?
 				ORDER BY date ASC
 				LIMIT ?`, dateStr, limit)
-		} else {
+		}
+
+		
+		if err == nil && !(len(search) == 10 && strings.Count(search, ".") == 2) {
 			likeStr := "%" + search + "%"
 			rows, err = DB.Query(`
 				SELECT id, date, title, comment, repeat
@@ -73,21 +76,18 @@ func Tasks(limit int, search string) ([]*Task, error) {
 		tasks = append(tasks, &t)
 	}
 
-	if rowErr := rows.Err(); rowErr != nil {
-		return nil, rowErr
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	if tasks == nil {
 		tasks = []*Task{}
 	}
-
 	return tasks, nil
 }
 
 func GetTask(id string) (*Task, error) {
-	row := DB.QueryRow(
-		`SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`, id)
-
+	row := DB.QueryRow(`SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`, id)
 	var t Task
 	if err := row.Scan(&t.ID, &t.Date, &t.Title, &t.Comment, &t.Repeat); err != nil {
 		if err == sql.ErrNoRows {
@@ -104,11 +104,9 @@ func UpdateTask(task *Task) error {
 	if err != nil {
 		return err
 	}
-	count, err := res.RowsAffected()
-	if err != nil {
+	if count, err := res.RowsAffected(); err != nil {
 		return err
-	}
-	if count == 0 {
+	} else if count == 0 {
 		return fmt.Errorf("task is not found")
 	}
 	return nil
@@ -119,11 +117,9 @@ func DeleteTask(id string) error {
 	if err != nil {
 		return err
 	}
-	count, err := res.RowsAffected()
-	if err != nil {
+	if count, err := res.RowsAffected(); err != nil {
 		return err
-	}
-	if count == 0 {
+	} else if count == 0 {
 		return fmt.Errorf("task is not found")
 	}
 	return nil
@@ -134,11 +130,9 @@ func UpdateDate(next string, id string) error {
 	if err != nil {
 		return err
 	}
-	count, err := res.RowsAffected()
-	if err != nil {
+	if count, err := res.RowsAffected(); err != nil {
 		return err
-	}
-	if count == 0 {
+	} else if count == 0 {
 		return fmt.Errorf("task is not found")
 	}
 	return nil

@@ -17,19 +17,27 @@ func nextDateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nowStr := r.URL.Query().Get("now")
-	dateStr := r.URL.Query().Get("date")
-	repeat := r.URL.Query().Get("repeat")
+	nowStr := strings.TrimSpace(r.URL.Query().Get("now"))
+	dateStr := strings.TrimSpace(r.URL.Query().Get("date"))
+	repeat := strings.TrimSpace(r.URL.Query().Get("repeat"))
+
+	if nowStr == "" || dateStr == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]string{"error": "now and date parameters are required"})
+		return
+	}
 
 	nowTime, err := time.Parse(dateFormat, nowStr)
 	if err != nil {
-		http.Error(w, "invalid now date", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]string{"error": "invalid now date"})
 		return
 	}
 
 	next, err := NextDate(nowTime, dateStr, repeat)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]string{"error": err.Error()})
 		return
 	}
 
