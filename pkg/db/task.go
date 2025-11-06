@@ -36,22 +36,27 @@ func Tasks(limit int, search string) ([]*Task, error) {
 			FROM scheduler
 			ORDER BY date ASC
 			LIMIT ?`, limit)
-	} else if parsedDate, parseErr := time.Parse("02.01.2006", search); parseErr == nil {
-		dateStr := parsedDate.Format("20060102")
-		rows, err = DB.Query(`
-		SELECT id, date, title, comment, repeat
-		FROM scheduler
-		WHERE date = ?
-		ORDER BY date ASC
-		LIMIT ?`, dateStr, limit)
-	} else {
-		likeStr := "%" + search + "%"
-		rows, err = DB.Query(`
-		SELECT id, date, title, comment, repeat
-		FROM scheduler
-		WHERE title LIKE ? OR comment LIKE ?
-		ORDER BY date ASC
-		LIMIT ?`, likeStr, likeStr, limit)
+	}
+
+	if err == nil && search != "" {
+		// Проверяем, является ли поиск датой
+		if parsedDate, parseErr := time.Parse("02.01.2006", search); parseErr == nil {
+			dateStr := parsedDate.Format("20060102")
+			rows, err = DB.Query(`
+				SELECT id, date, title, comment, repeat
+				FROM scheduler
+				WHERE date = ?
+				ORDER BY date ASC
+				LIMIT ?`, dateStr, limit)
+		} else {
+			likeStr := "%" + search + "%"
+			rows, err = DB.Query(`
+				SELECT id, date, title, comment, repeat
+				FROM scheduler
+				WHERE title LIKE ? OR comment LIKE ?
+				ORDER BY date ASC
+				LIMIT ?`, likeStr, likeStr, limit)
+		}
 	}
 
 	if err != nil {
@@ -66,6 +71,10 @@ func Tasks(limit int, search string) ([]*Task, error) {
 			return nil, err
 		}
 		tasks = append(tasks, &t)
+	}
+
+	if rowErr := rows.Err(); rowErr != nil {
+		return nil, rowErr
 	}
 
 	if tasks == nil {

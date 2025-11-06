@@ -11,6 +11,12 @@ import (
 const dateFormat = "20060102"
 
 func nextDateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeJSON(w, map[string]string{"error": "method is not supported"})
+		return
+	}
+
 	nowStr := r.URL.Query().Get("now")
 	dateStr := r.URL.Query().Get("date")
 	repeat := r.URL.Query().Get("repeat")
@@ -28,7 +34,10 @@ func nextDateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(next))
+	if _, err := w.Write([]byte(next)); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		writeJSON(w, map[string]string{"error": err.Error()})
+	}
 }
 
 func NextDate(now time.Time, dateStr string, repeat string) (string, error) {
@@ -72,7 +81,6 @@ func handleDaysRule(date, now time.Time, parts []string) (string, error) {
 	}
 
 	date = date.AddDate(0, 0, n)
-
 	for !date.After(now) {
 		date = date.AddDate(0, 0, n)
 	}
@@ -82,7 +90,6 @@ func handleDaysRule(date, now time.Time, parts []string) (string, error) {
 
 func handleYearsRule(date, now time.Time) (string, error) {
 	original := date
-
 	for !date.After(now) {
 		year := date.Year() + 1
 		if date.Month() == time.February && date.Day() == 29 && !isLeapYear(year) {
@@ -91,7 +98,6 @@ func handleYearsRule(date, now time.Time) (string, error) {
 			date = date.AddDate(1, 0, 0)
 		}
 	}
-
 	if original.After(now) && date.Equal(original) {
 		year := date.Year() + 1
 		if date.Month() == time.February && date.Day() == 29 && !isLeapYear(year) {
@@ -100,7 +106,6 @@ func handleYearsRule(date, now time.Time) (string, error) {
 			date = date.AddDate(1, 0, 0)
 		}
 	}
-
 	return date.Format(dateFormat), nil
 }
 
