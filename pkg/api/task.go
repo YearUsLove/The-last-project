@@ -22,33 +22,30 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		handleDeleteTask(w, r)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		writeJSON(w, map[string]string{"error": "method is not supported"})
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method is not supported"})
 	}
 }
 
 func handleGetTask(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
 	if id == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "id is required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
 		return
 	}
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, task)
+	writeJSON(w, http.StatusOK, task)
 }
 
 func handleEditTask(w http.ResponseWriter, r *http.Request) {
 	var incoming map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&incoming); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "invalid json"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
 	}
 
@@ -57,13 +54,11 @@ func handleEditTask(w http.ResponseWriter, r *http.Request) {
 		task.ID = fmt.Sprint(v)
 	}
 	if strings.TrimSpace(task.ID) == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "id is required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
 		return
 	}
 	if _, err := strconv.Atoi(task.ID); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "invalid id"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid id"})
 		return
 	}
 	if v, ok := incoming["date"]; ok {
@@ -73,8 +68,7 @@ func handleEditTask(w http.ResponseWriter, r *http.Request) {
 		task.Title = fmt.Sprint(v)
 	}
 	if strings.TrimSpace(task.Title) == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "task title is required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "task title is required"})
 		return
 	}
 	if v, ok := incoming["comment"]; ok {
@@ -85,36 +79,31 @@ func handleEditTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if task.Repeat != "" {
 		if err := validateRepeatFormat(task.Repeat); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			writeJSON(w, map[string]string{"error": "invalid repeat format"})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid repeat format"})
 			return
 		}
 	}
 	if err := processTaskDates(&task); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": err.Error(), "flag": "1"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error(), "flag": "1"})
 		return
 	}
 	if err := db.UpdateTask(&task); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, map[string]string{})
+	writeJSON(w, http.StatusOK, map[string]string{})
 }
 
 func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
 	if id == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "id is required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
 		return
 	}
 	if err := db.DeleteTask(id); err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, map[string]string{})
+	writeJSON(w, http.StatusOK, map[string]string{})
 }

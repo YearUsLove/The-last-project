@@ -12,8 +12,7 @@ const dateFormat = "20060102"
 
 func nextDateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		writeJSON(w, map[string]string{"error": "method is not supported"})
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method is not supported"})
 		return
 	}
 
@@ -22,29 +21,25 @@ func nextDateHandler(w http.ResponseWriter, r *http.Request) {
 	repeat := strings.TrimSpace(r.URL.Query().Get("repeat"))
 
 	if nowStr == "" || dateStr == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "now and date parameters are required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "now and date parameters are required"})
 		return
 	}
 
 	nowTime, err := time.Parse(dateFormat, nowStr)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": "invalid now date"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid now date"})
 		return
 	}
 
 	next, err := NextDate(nowTime, dateStr, repeat)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	if _, err := w.Write([]byte(next)); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 }
 

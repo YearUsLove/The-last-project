@@ -20,34 +20,34 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	var task db.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJSON(w, map[string]string{"error": "invalid json"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
 	}
 
 	if strings.TrimSpace(task.Title) == "" {
-		writeJSON(w, map[string]string{"error": "task title is required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "task title is required"})
 		return
 	}
 
 	if strings.TrimSpace(task.Repeat) != "" {
 		if err := validateRepeatFormat(task.Repeat); err != nil {
-			writeJSON(w, map[string]string{"error": "invalid repeat format"})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid repeat format"})
 			return
 		}
 	}
 
 	if err := processTaskDates(&task); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error(), "flag": "1"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error(), "flag": "1"})
 		return
 	}
 
 	id, err := db.AddTask(&task)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, map[string]string{"id": fmt.Sprintf("%d", id)})
+	writeJSON(w, http.StatusOK, map[string]string{"id": fmt.Sprintf("%d", id)})
 }
 
 func processTaskDates(task *db.Task) error {
@@ -90,8 +90,9 @@ func isBeforeToday(date, now time.Time) bool {
 	return date.Format(dateFormat) < now.Format(dateFormat)
 }
 
-func writeJSON(w http.ResponseWriter, data any) {
+func writeJSON(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(data)
 }
 
